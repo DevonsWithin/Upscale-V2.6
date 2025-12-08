@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UltraScale AI - V2.6 Touch Compare</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script type="importmap">
+    {
+        "imports": {
+            "react": "https://esm.sh/react@18.2.0",
+            "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
+            "lucide-react": "https://esm.sh/lucide-react@0.263.1"
+        }
+    }
+    </script>
+
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <style>
+        body { margin: 0; background-color: #101010; }
+        /* 禁止手機上的長按選取文字與右鍵選單，優化長按對比體驗 */
+        .no-select {
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #1a1a1a; }
+        ::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #444; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel" data-type="module">
+        import React, { useState, useRef, useEffect, useCallback } from 'react';
+        import { createRoot } from 'react-dom/client';
+        import { Upload, Sparkles, Image as ImageIcon, Download, Plus, Zap, Shield, Activity, FileImage, ZoomIn, Monitor } from 'lucide-react';
+
+        // --- 客製化圖示：Before / After (仿照上傳圖片繪製) ---
+        const BeforeAfterIcon = ({ size = 24, className = "" }) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                {/* 左半邊實線框 */}
+                <path d="M12 5H7a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h5" />
+                {/* 中間分隔線 (凸出) */}
+                <line x1="12" y1="4" x2="12" y2="20" />
+                {/* 右半邊虛線框 */}
+                <path d="M16 5h1a2 2 0 0 1 2 2v1" /> {/* 右上角 */}
+                <line x1="19" y1="12" x2="19" y2="12" /> {/* 右中點 */}
+                <path d="M19 16v1a2 2 0 0 1-2 2h-1" /> {/* 右下角 */}
+            </svg>
+        );
+
+        // --- 輔助函式 ---
+        const getTimestampFilename = (ext, mode) => {
+          const now = new Date();
+          const pad = (n) => String(n).padStart(2, '0');
+          const dateStr = `${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}`;
+          const timeStr = `${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+          
+          let suffix = '_Original';
+          if (mode === 'balanced') suffix = '_Balanced';
+          if (mode === 'creative') suffix = '_Creative';
+
+          return `${dateStr} #${timeStr}${suffix}.${ext}`; 
+        };
+
+        const App = () => {
+          // --- 狀態管理 ---
+          const [originalImage, setOriginalImage] = useState(null);
+          const [imgDimensions, setImgDimensions] = useState({ w: 0, h: 0 });
+          
+          const [mode, setMode] = useState('creative'); 
+          const [format, setFormat] = useState('jpg');
+          const [resolution, setResolution] = useState(3840);
+          
+          const [step, setStep] = useState('upload'); 
+          const [progress, setProgress] = useState(0);
+          const [isExporting, setIsExporting] = useState(false);
+
+          // 互動狀態
+          const [zoom, setZoom] = useState(1);
+          const [pan, setPan] = useState({ x: 0, y: 0 });
+          const [isComparing, setIsComparing] = useState(false); // V2.6 新增：是否正在長按對比
+          
+          const [isDraggingImage, setIsDraggingImage] = useState(false);
+          const dragStartRef = useRef({ x: 0, y: 0 });
+          const containerRef = useRef(null);
+
+          // --- V2.5 引擎核心設定 (保留) ---
+          
+          const getPreviewFilter = () => {
+            switch (mode) {
+              case 'conservative': return 'none'; 
+              case 'balanced': return 'none';
+              case 'creative': return 'contrast(1.05) brightness(1.01) saturate(1.02)'; 
+              default: return 'none';
+            }
+          };
+
+          const renderAndDownload = () => {
+            if (!originalImage) return;
+            setIsExporting(true);
+
+            setTimeout(() => {
+              const img = new Image();
+              img.src = originalImage;
+              img.onload = () => {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                
+                const targetWidth = resolution;
+                const scaleFactor = targetWidth / img.width;
+                const targetHeight = Math.round(img.height * scaleFactor);
+                
+                canvas.width = targetWidth;
+                canvas.height = targetHeight;
+                
+                ctx.imageSmoothingEnabled = true;
+                ctx.imageSmoothingQuality = 'high';
+
+                // Layer 1
+                if (mode === 'conservative' || mode === 'balanced') {
+                    ctx.filter = 'none';
+                } else if (mode === 'creative') {
+                    ctx.filter = 'contrast(1.05) brightness(1.01) saturate(1.02)';
+                }
+                ctx.drawImage(img, 0, 0, targetWidth, targetHeight);
+                ctx.filter = 'none';
+
+                // Layer 2: Sharpening
+                if (mode === 'balanced' || mode === 'creative') {
+                    ctx.globalCompositeOperation = 'overlay';
+                    ctx.globalAlpha = mode === 'balanced' ? 0.22 : 0.40;
+                    ctx.drawImage(img, 0, 0, targetWidth, targetHeight);
+                    ctx.globalCompositeOperation = 'source-over';
+                    ctx.globalAlpha = 1.0;
+                }
+
+                // Layer 3: Texture
+                const noiseCanvas = document.createElement('canvas');
+                noiseCanvas.width = targetWidth;
+                noiseCanvas.height = targetHeight;
+                const nCtx = noiseCanvas.getContext('2d');
+                
+                const imgData = nCtx.createImageData(targetWidth, targetHeight);
+                const buffer = new Uint32Array(imgData.data.buffer);
+                for (let i = 0; i < buffer.length; i++) {
+                    const v = (Math.random() * 255) | 0;
+                    buffer[i] = (255 << 24) | (v << 16) | (v << 8) | v; 
+                }
+                nCtx.putImageData(imgData, 0, 0);
+
+                ctx.globalCompositeOperation = 'overlay';
+                if (mode === 'conservative') ctx.globalAlpha = 0.12;
+                else if (mode === 'balanced') ctx.globalAlpha = 0.15;
+                else ctx.globalAlpha = 0.18;
+                
+                ctx.drawImage(noiseCanvas, 0, 0);
+                
+                ctx.globalCompositeOperation = 'source-over';
+                ctx.globalAlpha = 1.0;
+
+                // Output
+                const mimeType = format === 'png' ? 'image/png' : 'image/jpeg';
+                const quality = format === 'png' ? undefined : 1.0;
+                
+                const dataUrl = canvas.toDataURL(mimeType, quality);
+                const link = document.createElement('a');
+                link.download = getTimestampFilename(format, mode);
+                link.href = dataUrl;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                
+                setIsExporting(false);
+              };
+            }, 100);
+          };
+
+          // --- 互動邏輯 (V2.6 改版：整合 Pan 與 Hold-to-Compare) ---
+
+          const handleWheel = (e) => {
+            if (step !== 'result') return;
+            e.preventDefault();
+            const delta = e.deltaY * -0.001;
+            const newZoom = Math.min(Math.max(1, zoom + delta * 5), 8);
+            setZoom(newZoom);
+            if (newZoom === 1) setPan({ x: 0, y: 0 });
+          };
+
+          // Mouse Events
+          const handleMouseDown = (e) => {
+            if (step !== 'result') return;
+            // 按下時，啟動拖曳邏輯，同時啟動對比邏輯
+            setIsDraggingImage(true);
+            setIsComparing(true); // 顯示原圖
+            dragStartRef.current = { x: e.clientX - pan.x, y: e.clientY - pan.y };
+          };
+
+          const handleMouseMove = useCallback((e) => {
+            if (isDraggingImage) {
+              e.preventDefault();
+              const newX = e.clientX - dragStartRef.current.x;
+              const newY = e.clientY - dragStartRef.current.y;
+              setPan({ x: newX, y: newY });
+            }
+          }, [isDraggingImage]);
+
+          const handleMouseUp = () => {
+            setIsDraggingImage(false);
+            setIsComparing(false); // 恢復修復圖
+          };
+
+          useEffect(() => {
+            if (isDraggingImage) {
+              window.addEventListener('mousemove', handleMouseMove);
+              window.addEventListener('mouseup', handleMouseUp);
+              // 加入 mouseleave 以防滑鼠移出視窗卡住
+              window.addEventListener('mouseleave', handleMouseUp);
+              return () => {
+                window.removeEventListener('mousemove', handleMouseMove);
+                window.removeEventListener('mouseup', handleMouseUp);
+                window.removeEventListener('mouseleave', handleMouseUp);
+              };
+            }
+          }, [handleMouseMove, isDraggingImage]);
+
+          // Touch Events
+          const handleTouchStart = (e) => {
+            if (step !== 'result' || e.touches.length > 1) return;
+            const touch = e.touches[0];
+            
+            setIsDraggingImage(true);
+            setIsComparing(true); // 觸控開始 -> 顯示原圖
+            dragStartRef.current = { x: touch.clientX - pan.x, y: touch.clientY - pan.y };
+          };
+
+          const handleTouchMove = useCallback((e) => {
+            if (e.touches.length > 1) return;
+            const touch = e.touches[0];
+            if (isDraggingImage) {
+              e.preventDefault();
+              const newX = touch.clientX - dragStartRef.current.x;
+              const newY = touch.clientY - dragStartRef.current.y;
+              setPan({ x: newX, y: newY });
+            }
+          }, [isDraggingImage]);
+
+          const handleTouchEnd = () => {
+            setIsDraggingImage(false);
+            setIsComparing(false); // 觸控結束 -> 恢復修復圖
+          };
+          
+          useEffect(() => {
+            if (isDraggingImage) {
+              window.addEventListener('touchmove', handleTouchMove, { passive: false });
+              window.addEventListener('touchend', handleTouchEnd);
+              return () => {
+                window.removeEventListener('touchmove', handleTouchMove);
+                window.removeEventListener('touchend', handleTouchEnd);
+              };
+            }
+          }, [handleTouchMove, isDraggingImage]);
+
+
+          // --- File Handling ---
+
+          const handleFileUpload = (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (evt) => {
+              const img = new Image();
+              img.onload = () => {
+                setImgDimensions({ w: img.width, h: img.height });
+                setOriginalImage(evt.target.result);
+                setStep('processing');
+                startSimulation();
+              };
+              img.src = evt.target.result;
+            };
+            reader.readAsDataURL(file);
+          };
+
+          const startSimulation = () => {
+            setProgress(0);
+            const interval = setInterval(() => {
+              setProgress(prev => {
+                if (prev >= 100) {
+                  clearInterval(interval);
+                  setStep('result');
+                  return 100;
+                }
+                return prev + 2;
+              });
+            }, 30);
+          };
+
+          const resetAll = () => {
+            setOriginalImage(null);
+            setStep('upload');
+            setZoom(1);
+            setPan({ x: 0, y: 0 });
+            setIsComparing(false);
+          };
+
+          return (
+            <div className="min-h-screen bg-[#101010] text-gray-100 font-sans flex flex-col overflow-hidden select-none no-select">
+              
+              <header className="h-16 bg-[#161616] border-b border-[#2A2A2A] flex items-center justify-between px-6 z-50 shrink-0">
+                <div className="flex items-center gap-3">
+                  <div className="bg-gradient-to-br from-purple-600 to-blue-600 p-1.5 rounded-lg shadow-lg shadow-purple-900/20">
+                    <Sparkles size={18} className="text-white" />
+                  </div>
+                  <div>
+                    <h1 className="text-lg font-bold tracking-tight text-white leading-none">UltraScale <span className="text-purple-400">AI</span></h1>
+                    <div className="text-[10px] font-mono text-gray-500 tracking-wider mt-0.5">V2.6 TOUCH COMPARE</div>
+                  </div>
+                </div>
+                
+                {step === 'result' && (
+                     <button onClick={resetAll} className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#252525] hover:bg-[#303030] text-xs text-gray-300 transition-colors border border-white/5">
+                        <Plus size={14} /> <span>新增影像</span>
+                     </button>
+                )}
+              </header>
+
+              <main className="flex-1 relative flex flex-col overflow-hidden">
+                {step === 'upload' && (
+                  <div className="flex-1 flex flex-col items-center justify-center p-6 animate-fade-in">
+                     <div className="w-full max-w-2xl bg-[#1A1A1A] border border-[#2A2A2A] rounded-2xl p-12 text-center relative group overflow-hidden">
+                        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-purple-600 via-blue-500 to-purple-600 opacity-50"></div>
+                        <div className="relative z-10 flex flex-col items-center">
+                            <div className="w-20 h-20 bg-[#252525] rounded-2xl flex items-center justify-center mb-6 shadow-inner group-hover:scale-105 transition-transform duration-300">
+                                <Upload size={32} className="text-gray-400 group-hover:text-purple-400 transition-colors" />
+                            </div>
+                            <h2 className="text-2xl font-bold text-white mb-3">載入影像以開始重建</h2>
+                            <p className="text-gray-500 mb-8 max-w-md mx-auto">支援 RAW, JPG, PNG • 4K 紋理合成引擎已就緒</p>
+                            <label className="relative cursor-pointer">
+                                <input type="file" className="hidden" accept="image/*" onChange={handleFileUpload} />
+                                <div className="bg-white hover:bg-gray-100 text-black px-8 py-3 rounded-lg font-bold transition-all transform active:scale-95 shadow-[0_0_20px_rgba(255,255,255,0.1)]">選擇檔案</div>
+                            </label>
+                        </div>
+                     </div>
+                  </div>
+                )}
+
+                {step === 'processing' && (
+                   <div className="flex-1 flex flex-col items-center justify-center p-6">
+                      <div className="relative w-32 h-32 flex items-center justify-center mb-8">
+                         <svg className="absolute inset-0 w-full h-full animate-spin-slow" viewBox="0 0 100 100">
+                            <circle cx="50" cy="50" r="45" stroke="#2A2A2A" strokeWidth="4" fill="none" />
+                            <circle cx="50" cy="50" r="45" stroke="#8B5CF6" strokeWidth="4" fill="none" strokeDasharray="280" strokeDashoffset={280 - (280 * progress) / 100} strokeLinecap="round" />
+                         </svg>
+                         <div className="text-2xl font-bold text-white">{progress}%</div>
+                      </div>
+                      <h2 className="text-xl font-bold text-white mb-2">正在進行神經網路重建...</h2>
+                      <div className="flex flex-col gap-2 text-sm text-gray-500 text-center">
+                         <p className={progress > 20 ? "text-purple-400" : ""}>• 分析圖像語義結構</p>
+                         <p className={progress > 50 ? "text-blue-400" : ""}>• 全域紋理注入 (Texture Injection)</p>
+                         <p className={progress > 80 ? "text-pink-400" : ""}>• 邊緣銳化增強 (Edge Enhancement)</p>
+                      </div>
+                   </div>
+                )}
+
+                {step === 'result' && originalImage && (
+                    <div className="flex-1 flex flex-col h-full">
+                        {/* 畫布區域 */}
+                        <div className="flex-1 relative bg-[#0A0A0A] overflow-hidden group cursor-grab active:cursor-grabbing"
+                             onWheel={handleWheel}
+                             onMouseDown={handleMouseDown}
+                             onTouchStart={handleTouchStart}
+                             ref={containerRef}
+                        >
+                            <div className="w-full h-full flex items-center justify-center origin-center will-change-transform" style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})` }}>
+                                <div className="relative shadow-2xl" style={{ maxWidth: '90%', maxHeight: '90%' }}>
+                                    
+                                    {/* 1. 底層：原圖 (永遠存在，當頂層透明時顯示) */}
+                                    <img src={originalImage} alt="Original" className="block max-w-full max-h-[80vh] object-contain pointer-events-none" draggable="false" />
+                                    
+                                    {/* 2. 頂層：修復後圖 (長按時透明度變為 0) */}
+                                    <div className={`absolute inset-0 pointer-events-none transition-opacity duration-200 ${isComparing ? 'opacity-0' : 'opacity-100'}`}>
+                                        <img src={originalImage} alt="Processed" className="w-full h-full object-contain" style={{ filter: getPreviewFilter() }} draggable="false" />
+                                        <div className="absolute inset-0 bg-noise opacity-10 mix-blend-overlay pointer-events-none"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            {/* 右上角對比提示圖示 */}
+                            <div className="absolute top-6 right-6 flex flex-col items-center gap-2 pointer-events-none z-50">
+                                <div className="bg-black/60 backdrop-blur-md p-2 rounded-lg border border-white/10 shadow-lg">
+                                    <BeforeAfterIcon size={24} className="text-white" />
+                                </div>
+                                <div className="text-[10px] text-white/70 font-bold bg-black/40 px-2 py-0.5 rounded-full backdrop-blur-sm">
+                                    長按對比
+                                </div>
+                            </div>
+
+                            {/* Zoom Indicator */}
+                            {zoom > 1 && (
+                                <div className="absolute top-4 left-4 bg-black/70 backdrop-blur px-3 py-1.5 rounded-full text-xs font-bold text-white border border-white/10 pointer-events-none flex items-center gap-2">
+                                   <ZoomIn size={12} /> {Math.round(zoom * 100)}%
+                                </div>
+                            )}
+                        </div>
+
+                        {/* 下方控制列 */}
+                        <div className="h-auto bg-[#161616] border-t border-[#2A2A2A] p-4 md:px-8 flex flex-col gap-4 z-40 shrink-0">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                <button onClick={() => setMode('conservative')} className={`relative p-3 rounded-xl border text-left transition-all ${mode === 'conservative' ? 'bg-[#252525] border-blue-500' : 'bg-[#1A1A1A] border-[#2A2A2A] hover:bg-[#202020]'}`}>
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <div className={`p-1 rounded-md ${mode === 'conservative' ? 'bg-blue-500/20 text-blue-400' : 'bg-[#333] text-gray-500'}`}><Shield size={16} /></div>
+                                        <span className={`text-sm font-bold ${mode === 'conservative' ? 'text-white' : 'text-gray-400'}`}>保守修復</span>
+                                    </div>
+                                    <p className="text-[10px] text-gray-500 leading-tight">保留原始色調。僅進行紋理注入以還原真實細節。</p>
+                                    {mode === 'conservative' && <div className="absolute top-3 right-3 w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.8)]"></div>}
+                                </button>
+
+                                <button onClick={() => setMode('balanced')} className={`relative p-3 rounded-xl border text-left transition-all ${mode === 'balanced' ? 'bg-[#252525] border-purple-500' : 'bg-[#1A1A1A] border-[#2A2A2A] hover:bg-[#202020]'}`}>
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <div className={`p-1 rounded-md ${mode === 'balanced' ? 'bg-purple-500/20 text-purple-400' : 'bg-[#333] text-gray-500'}`}><Activity size={16} /></div>
+                                        <span className={`text-sm font-bold ${mode === 'balanced' ? 'text-white' : 'text-gray-400'}`}>智慧補全</span>
+                                    </div>
+                                    <p className="text-[10px] text-gray-500 leading-tight">100% 原圖對比。紋理注入 + 邊緣銳化。</p>
+                                    {mode === 'balanced' && <div className="absolute top-3 right-3 w-2 h-2 rounded-full bg-purple-500 shadow-[0_0_8px_rgba(168,85,247,0.8)]"></div>}
+                                </button>
+
+                                <button onClick={() => setMode('creative')} className={`relative p-3 rounded-xl border text-left transition-all ${mode === 'creative' ? 'bg-[#252525] border-pink-500' : 'bg-[#1A1A1A] border-[#2A2A2A] hover:bg-[#202020]'}`}>
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <div className={`p-1 rounded-md ${mode === 'creative' ? 'bg-pink-500/20 text-pink-400' : 'bg-[#333] text-gray-500'}`}><Zap size={16} /></div>
+                                        <span className={`text-sm font-bold ${mode === 'creative' ? 'text-white' : 'text-gray-400'}`}>細節重繪</span>
+                                    </div>
+                                    <p className="text-[10px] text-gray-500 leading-tight">柔和化處理。低對比 + 通透感 + 深度銳化。</p>
+                                    {mode === 'creative' && <div className="absolute top-3 right-3 w-2 h-2 rounded-full bg-pink-500 shadow-[0_0_8px_rgba(236,72,153,0.8)]"></div>}
+                                </button>
+                            </div>
+
+                            <div className="bg-[#101010] p-3 rounded-xl border border-[#2A2A2A] flex flex-col lg:flex-row items-center gap-4">
+                                <div className="flex items-center gap-3 text-xs text-gray-400 px-2 flex-1 w-full lg:w-auto">
+                                     <Monitor size={14} /> 
+                                     {/* 輸出尺寸選擇 */}
+                                     <div className="flex bg-[#222] rounded p-0.5">
+                                         <button onClick={() => setResolution(2048)} className={`px-2 py-0.5 rounded text-[10px] font-bold transition-all ${resolution === 2048 ? 'bg-gray-600 text-white' : 'text-gray-500 hover:text-gray-300'}`}>2K</button>
+                                         <button onClick={() => setResolution(3840)} className={`px-2 py-0.5 rounded text-[10px] font-bold transition-all ${resolution === 3840 ? 'bg-gray-600 text-white' : 'text-gray-500 hover:text-gray-300'}`}>4K</button>
+                                     </div>
+                                     <span className="text-gray-600">|</span>
+                                     <FileImage size={14} />
+                                     <div className="flex bg-[#222] rounded p-0.5">
+                                         <button onClick={() => setFormat('jpg')} className={`px-2 py-0.5 rounded text-[10px] font-bold transition-all ${format === 'jpg' ? 'bg-gray-600 text-white' : 'text-gray-500 hover:text-gray-300'}`}>JPG</button>
+                                         <button onClick={() => setFormat('png')} className={`px-2 py-0.5 rounded text-[10px] font-bold transition-all ${format === 'png' ? 'bg-gray-600 text-white' : 'text-gray-500 hover:text-gray-300'}`}>PNG</button>
+                                     </div>
+                                </div>
+                                <button onClick={renderAndDownload} disabled={isExporting} className="w-full lg:w-auto bg-white hover:bg-gray-200 text-black px-6 py-2.5 rounded-lg font-bold shadow-lg shadow-white/5 transition-all active:scale-95 flex items-center justify-center gap-2 min-w-[200px]">
+                                    {isExporting ? <><div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin"></div> 渲染中...</> : <><Download size={16} /> 下載 {resolution === 3840 ? '4K' : '2K'} 成果</>}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+              </main>
+
+              <style>{`
+                .bg-noise { background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='1'/%3E%3C/svg%3E"); }
+                @keyframes spin-slow { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+                .animate-spin-slow { animation: spin-slow 3s linear infinite; }
+              `}</style>
+            </div>
+          );
+        };
+
+        const root = createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
+
+
+
