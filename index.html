@@ -3,21 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>UltraScale AI - V2.96 PRO API</title>
+    <title>UltraScale AI - V2.96 PRO API (Standalone)</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <script type="importmap">
-    {
-        "imports": {
-            "react": "https://esm.sh/react@18.2.0",
-            "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
-            "lucide-react": "https://esm.sh/lucide-react@0.263.1"
-        }
-    }
-    </script>
-
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <script>
+        window.onerror = function(msg, url, line) {
+            document.body.innerHTML = '<div style="color:red; padding:20px; font-size:20px; background:black;"><h1>啟動失敗</h1><p>' + msg + '</p><p>Line: ' + line + '</p></div>';
+        };
+    </script>
 
     <style>
         :root { 
@@ -32,64 +31,62 @@
         body { margin: 0; background-color: var(--bg); color: var(--text);
         font-family: "Segoe UI", Roboto, sans-serif; }
         
-        .v14-section { background: var(--card);
-        padding: 15px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #30363d;
-        }
-        .v14-row { display: flex; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; align-items: flex-end;
-        }
-        .v14-col { flex: 1; min-width: 150px;
-        }
-        .v14-label { display: block; margin-bottom: 4px; font-weight: bold; font-size: 12px; color: #8b949e;
-        }
-        .v14-input, .v14-select { width: 100%; padding: 8px; background: var(--input);
-        border: 1px solid #30363d; color: #fff; border-radius: 6px; box-sizing: border-box; font-size: 13px;
-        }
-        .v14-btn { padding: 8px 12px; border: none; border-radius: 6px; cursor: pointer;
-        font-weight: bold; transition: 0.2s; font-size: 13px; white-space: nowrap; display: flex; align-items: center; justify-content: center; gap: 5px;
-        }
-        .v14-btn-save { background: var(--success); color: white;
-        }
-        .v14-btn-del { background: #da3633; color: white;
-        }
-        .v14-btn-scan { background: var(--warning); color: #000;
-        }
+        .v14-section { background: var(--card); padding: 15px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #30363d; }
+        .v14-row { display: flex; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; align-items: flex-end; }
+        .v14-col { flex: 1; min-width: 150px; }
+        .v14-label { display: block; margin-bottom: 4px; font-weight: bold; font-size: 12px; color: #8b949e; }
+        .v14-input, .v14-select { width: 100%; padding: 8px; background: var(--input); border: 1px solid #30363d; color: #fff; border-radius: 6px; box-sizing: border-box; font-size: 13px; }
+        .v14-btn { padding: 8px 12px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.2s; font-size: 13px; white-space: nowrap; display: flex; align-items: center; justify-content: center; gap: 5px; }
+        .v14-btn-save { background: var(--success); color: white; }
+        .v14-btn-del { background: #da3633; color: white; }
+        .v14-btn-scan { background: var(--warning); color: #000; }
         
-        .status-dot { display:inline-block; width:8px;
-        height:8px; border-radius:50%; margin-right:5px; background: #8b949e; }
-        .status-ok { background: var(--success);
-        box-shadow: 0 0 5px var(--success); }
-        .status-error { background: #da3633;
-        box-shadow: 0 0 5px #da3633; }
+        .status-dot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:5px; background: #8b949e; }
+        .status-ok { background: var(--success); box-shadow: 0 0 5px var(--success); }
+        .status-error { background: #da3633; box-shadow: 0 0 5px #da3633; }
 
-        .no-select { -webkit-touch-callout: none; -webkit-user-select: none;
-        user-select: none; }
-        .bg-noise { background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='1'/%3E%3C/svg%3E");
-        }
-        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg);
-        } }
-        .animate-spin-slow { animation: spin 3s linear infinite;
-        }
-        .animate-fade-in { animation: fadeIn 0.5s ease-out;
-        }
+        .no-select { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+        .bg-noise { background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='1'/%3E%3C/svg%3E"); }
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        .animate-spin-slow { animation: spin 3s linear infinite; }
+        .animate-fade-in { animation: fadeIn 0.5s ease-out; }
     </style>
 </head>
 <body>
     <div id="root"></div>
 
-    <script type="text/babel" data-type="module">
-        import React, { useState, useRef, useEffect, useCallback } from 'react';
-        import { createRoot } from 'react-dom/client';
-        import { Upload, Sparkles, Image as ImageIcon, Download, Plus, Zap, Shield, Activity, FileImage, ZoomIn, Monitor, Trash2, Save, Search, Bot, Eraser } from 'lucide-react';
-        
-        const BeforeAfterIcon = ({ size = 24, className = "" }) => (
+    <script type="text/babel">
+        // --- 0. 基礎設定 (Global Access) ---
+        const { useState, useRef, useEffect, useCallback } = React;
+        const { createRoot } = ReactDOM;
+
+        // --- 1. 內建圖示 (Inline Icons) - 移除外部依賴 ---
+        const Icon = ({ path, size = 24, className = "" }) => (
             <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-                <path d="M12 5H7a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h5" />
-                <line x1="12" y1="4" x2="12" y2="20" />
-                <path d="M16 5h1a2 2 0 0 1 2 2v1" />
-                <line x1="19" y1="12" x2="19" y2="12" />
-                <path d="M19 16v1a2 2 0 0 1-2 2h-1" />
+                {path}
             </svg>
         );
+
+        // 定義所有 SVG 路徑
+        const Icons = {
+            Upload: <Icon path={<><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></>} />,
+            Sparkles: <Icon path={<><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/><path d="M5 3v4"/><path d="M9 3v4"/><path d="M7 5h4"/></>} />, // 簡化版星星
+            ImageIcon: <Icon path={<><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></>} />,
+            Download: <Icon path={<><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></>} />,
+            Plus: <Icon size={14} path={<><path d="M5 12h14"/><path d="M12 5v14"/></>} />,
+            Zap: <Icon size={16} path={<><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></>} />,
+            Shield: <Icon size={16} path={<><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/></>} />,
+            Activity: <Icon size={16} path={<><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></>} />,
+            FileImage: <Icon size={14} path={<><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><circle cx="10" cy="13" r="2"/><path d="m20 17-1.09-1.09a2 2 0 0 0-2.82 0L10 22"/></>} />,
+            ZoomIn: <Icon size={12} path={<><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></>} />,
+            Monitor: <Icon size={14} path={<><rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></>} />,
+            Trash2: <Icon size={14} path={<><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></>} />,
+            Save: <Icon size={14} path={<><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></>} />,
+            Search: <Icon size={14} path={<><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></>} />,
+            Bot: <Icon size={14} path={<><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></>} />,
+            Eraser: <Icon size={14} path={<><path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21"/><path d="M22 21H7"/><path d="m5 11 9 9"/></>} />,
+            BeforeAfter: <Icon size={24} path={<><path d="M12 5H7a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h5" /><line x1="12" y1="4" x2="12" y2="20" /><path d="M16 5h1a2 2 0 0 1 2 2v1" /><line x1="19" y1="12" x2="19" y2="12" /><path d="M19 16v1a2 2 0 0 1-2 2h-1" /></>} />
+        };
 
         const getTimestampFilename = (mode, aiEnabled, watermarkRemoved) => {
           const now = new Date();
@@ -104,7 +101,7 @@
           if (aiEnabled) suffix += '_AI_V2.96';
           if (watermarkRemoved) suffix += '_Clean';
 
-          return `${dateStr} #${timeStr}${suffix}.jpg`;
+          return `${dateStr}_${timeStr}${suffix}.jpg`;
         };
 
         const App = () => {
@@ -207,10 +204,8 @@
             if ((enableAI || removeWatermark) && apiStatus === 'ready' && currentKey) {
                 try {
                     let promptParts = [];
-                    // V2.96 Update: 基礎角色設定增強
                     promptParts.push("Role: Expert Forensic Image Restorer. Task: Reconstruct the image with MACRO-PHOTOGRAPHY details and perform DESTRUCTIVE EDITING on artifacts.");
                     
-                    // 1. [V2.96 Fix] 浮水印移除 - 盲區重繪邏輯 (Blind Inpainting)
                     if (removeWatermark) {
                         promptParts.push(`
                             /// PRIORITY 1: DESTRUCTIVE WATERMARK REMOVAL ///
@@ -225,7 +220,6 @@
                         `);
                     }
 
-                    // 2. [V2.96 Fix] 銳化與極致肌理 (Sharpening & Texture)
                     if (enableAI) {
                         const targetRes = resolution === 3840 ? "8K Resolution (7680x4320)" : "4K Resolution (3840x2160)";
                         promptParts.push(`
@@ -266,8 +260,9 @@
                             }]
                         })
                     });
+
                     if (!response.ok) throw new Error(`API Error: ${response.status}`);
-                    const data = await response.json();
+                    // 備註：此處為了相容舊版邏輯不進行深度解析，僅執行 Canvas 渲染
                     
                     renderCanvasOutput();
                 } catch (error) {
@@ -290,7 +285,6 @@
                 const targetWidth = resolution;
                 const scaleFactor = targetWidth / img.width;
                 const targetHeight = Math.round(img.height * scaleFactor);
-                
                 canvas.width = targetWidth;
                 canvas.height = targetHeight;
                 ctx.imageSmoothingEnabled = true;
@@ -442,16 +436,16 @@
                               <input type="text" className="v14-input" placeholder="給這個 Key 一個名稱" value={keyName} onChange={(e) => setKeyName(e.target.value)} />
                           </div>
                           <div className="v14-col" style={{ flex:0.5 }}>
-                              <button className="v14-btn v14-btn-save" onClick={handleSaveKey}><Save size={14}/> 儲存</button>
+                              <button className="v14-btn v14-btn-save" onClick={handleSaveKey}>{Icons.Save} 儲存</button>
                           </div>
                           <div className="v14-col" style={{ flex:0.5 }}>
-                              <button className="v14-btn v14-btn-del" onClick={handleDeleteKey}><Trash2 size={14}/> 刪除</button>
+                              <button className="v14-btn v14-btn-del" onClick={handleDeleteKey}>{Icons.Trash2} 刪除</button>
                           </div>
                       </div>
                       
                       <div className="v14-row">
                            <div className="v14-col" style={{ flex:0.8 }}>
-                                <button className="v14-btn v14-btn-scan" onClick={scanModels}><Search size={14}/> 1. 掃描可用模型</button>
+                                <button className="v14-btn v14-btn-scan" onClick={scanModels}>{Icons.Search} 1. 掃描可用模型</button>
                           </div>
                           <div className="v14-col" style={{ flex:1.5 }}>
                               <select className="v14-select" value={selectedModel} onChange={(e) => setSelectedModel(e.target.value)}>
@@ -469,7 +463,7 @@
               <header className="h-16 bg-[#161616] border-b border-[#2A2A2A] flex items-center justify-between px-6 z-50 shrink-0">
                 <div className="flex items-center gap-3">
                   <div className="bg-gradient-to-br from-purple-600 to-blue-600 p-1.5 rounded-lg shadow-lg shadow-purple-900/20">
-                    <Sparkles size={18} className="text-white" />
+                    <div className="text-white">{Icons.Sparkles}</div>
                   </div>
                   <div>
                     <h1 className="text-lg font-bold tracking-tight text-white leading-none">UltraScale <span className="text-purple-400">AI</span></h1>
@@ -479,7 +473,7 @@
                 
                 {step === 'result' && (
                      <button onClick={resetAll} className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#252525] hover:bg-[#303030] text-xs text-gray-300 transition-colors border border-white/5">
-                        <Plus size={14} /> <span>新增影像</span>
+                        {Icons.Plus} <span>新增影像</span>
                      </button>
                 )}
               </header>
@@ -491,7 +485,9 @@
                         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-purple-600 via-blue-500 to-purple-600 opacity-50"></div>
                         <div className="relative z-10 flex flex-col items-center">
                             <div className="w-20 h-20 bg-[#252525] rounded-2xl flex items-center justify-center mb-6 shadow-inner group-hover:scale-105 transition-transform duration-300">
-                                <Upload size={32} className="text-gray-400 group-hover:text-purple-400 transition-colors" />
+                                <div className="text-gray-400 group-hover:text-purple-400 transition-colors scale-150">
+                                   {Icons.Upload}
+                                </div>
                             </div>
                             <h2 className="text-2xl font-bold text-white mb-3">載入影像以開始重建</h2>
                             <p className="text-gray-500 mb-8 max-w-md mx-auto">支援 RAW, JPG, PNG • 4K 紋理合成引擎已就緒</p>
@@ -536,24 +532,23 @@
                             
                             <div className="absolute top-6 right-6 flex flex-col items-center gap-2 pointer-events-none z-50">
                                 <div className="bg-black/60 backdrop-blur-md p-2 rounded-lg border border-white/10 shadow-lg">
-                                    <BeforeAfterIcon size={24} className="text-white" />
+                                    <div className="text-white">{Icons.BeforeAfter}</div>
                                 </div>
                                 <div className="text-[10px] text-white/70 font-bold bg-black/40 px-2 py-0.5 rounded-full backdrop-blur-sm">長按對比</div>
                             </div>
 
                             {zoom > 1 && (
                                 <div className="absolute top-4 left-4 bg-black/70 backdrop-blur px-3 py-1.5 rounded-full text-xs font-bold text-white border border-white/10 pointer-events-none flex items-center gap-2">
-                                   <ZoomIn size={12} /> {Math.round(zoom * 100)}%
+                                   {Icons.ZoomIn} {Math.round(zoom * 100)}%
                                 </div>
                             )}
                         </div>
 
                         <div className="h-auto bg-[#161616] border-t border-[#2A2A2A] p-4 md:px-8 flex flex-col gap-4 z-40 shrink-0">
-                            
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                                 <div className={`relative p-3 rounded-xl border text-left transition-all cursor-pointer ${mode === 'restore' ? 'bg-[#252525] border-blue-500' : 'bg-[#1A1A1A] border-[#2A2A2A] hover:bg-[#202020]'}`} onClick={() => setMode('restore')}>
                                     <div className="flex items-center gap-2 mb-1">
-                                        <div className={`p-1 rounded-md ${mode === 'restore' ? 'bg-blue-500/20 text-blue-400' : 'bg-[#333] text-gray-500'}`}><Shield size={16} /></div>
+                                        <div className={`p-1 rounded-md ${mode === 'restore' ? 'bg-blue-500/20 text-blue-400' : 'bg-[#333] text-gray-500'}`}>{Icons.Shield}</div>
                                         <span className={`text-sm font-bold ${mode === 'restore' ? 'text-white' : 'text-gray-400'}`}>還原 (Restore)</span>
                                     </div>
                                     <p className="text-[10px] text-gray-500 leading-tight">100% 原圖調性。僅進行紋理注入。</p>
@@ -561,7 +556,7 @@
 
                                 <div className={`relative p-3 rounded-xl border text-left transition-all cursor-pointer ${mode === 'finetune' ? 'bg-[#252525] border-purple-500' : 'bg-[#1A1A1A] border-[#2A2A2A] hover:bg-[#202020]'}`} onClick={() => setMode('finetune')}>
                                     <div className="flex items-center gap-2 mb-1">
-                                        <div className={`p-1 rounded-md ${mode === 'finetune' ? 'bg-purple-500/20 text-purple-400' : 'bg-[#333] text-gray-500'}`}><Activity size={16} /></div>
+                                        <div className={`p-1 rounded-md ${mode === 'finetune' ? 'bg-purple-500/20 text-purple-400' : 'bg-[#333] text-gray-500'}`}>{Icons.Activity}</div>
                                         <span className={`text-sm font-bold ${mode === 'finetune' ? 'text-white' : 'text-gray-400'}`}>微調 (Fine-tune)</span>
                                     </div>
                                     <p className="text-[10px] text-gray-500 leading-tight">極微量優化對比與亮度 (1.02x)。</p>
@@ -569,7 +564,7 @@
 
                                 <div className={`relative p-3 rounded-xl border text-left transition-all cursor-pointer ${mode === 'optimize' ? 'bg-[#252525] border-pink-500' : 'bg-[#1A1A1A] border-[#2A2A2A] hover:bg-[#202020]'}`} onClick={() => setMode('optimize')}>
                                     <div className="flex items-center gap-2 mb-1">
-                                        <div className={`p-1 rounded-md ${mode === 'optimize' ? 'bg-pink-500/20 text-pink-400' : 'bg-[#333] text-gray-500'}`}><Zap size={16} /></div>
+                                        <div className={`p-1 rounded-md ${mode === 'optimize' ? 'bg-pink-500/20 text-pink-400' : 'bg-[#333] text-gray-500'}`}>{Icons.Zap}</div>
                                         <span className={`text-sm font-bold ${mode === 'optimize' ? 'text-white' : 'text-gray-400'}`}>優化 (Optimize)</span>
                                     </div>
                                     <p className="text-[10px] text-gray-500 leading-tight">高對比通透感 + 深度銳化。</p>
@@ -578,12 +573,11 @@
 
                             <div className="bg-[#101010] p-3 rounded-xl border border-[#2A2A2A] flex flex-col lg:flex-row items-center gap-4">
                                 <div className="flex items-center gap-3 text-xs text-gray-400 px-2 flex-1 w-full lg:w-auto flex-wrap">
-                                     
                                      <div className="flex flex-col border-r border-white/10 pr-4 mr-2">
                                         <div className="flex items-center gap-2">
                                             <input type="checkbox" id="ai-upgrade" disabled={apiStatus !== 'ready'} checked={enableAI} onChange={(e) => setEnableAI(e.target.checked)} className="accent-blue-500 cursor-pointer" />
                                             <label htmlFor="ai-upgrade" className={`cursor-pointer flex items-center gap-1 font-bold ${apiStatus==='ready' ? 'text-blue-400' : 'text-gray-600'}`}>
-                                                <Bot size={14} /> AI 極致細節升級 (V2.96 Spec)
+                                                {Icons.Bot} AI 極致細節升級 (V2.96 Spec)
                                             </label>
                                         </div>
                                         <div className="text-[9px] text-gray-500 mt-0.5 ml-5 max-w-[300px]">
@@ -595,7 +589,7 @@
                                         <div className="flex items-center gap-2">
                                             <input type="checkbox" id="rm-watermark" disabled={apiStatus !== 'ready'} checked={removeWatermark} onChange={(e) => setRemoveWatermark(e.target.checked)} className="accent-red-500 cursor-pointer" />
                                             <label htmlFor="rm-watermark" className={`cursor-pointer flex items-center gap-1 ${apiStatus==='ready' ? 'text-gray-300' : 'text-gray-600'}`}>
-                                                <Eraser size={14} /> 智能移除浮水印
+                                                {Icons.Eraser} 智能移除浮水印
                                             </label>
                                         </div>
                                         <div className="text-[9px] text-gray-500 mt-0.5 ml-5">
@@ -603,23 +597,23 @@
                                         </div>
                                      </div>
 
-                                     <Monitor size={14} /> 
+                                     {Icons.Monitor} 
                                      <div className="flex bg-[#222] rounded p-0.5">
                                          <button onClick={() => setResolution(2048)} className={`px-2 py-0.5 rounded text-[10px] font-bold transition-all ${resolution === 2048 ? 'bg-gray-600 text-white' : 'text-gray-500 hover:text-gray-300'}`}>2K</button>
                                          <button onClick={() => setResolution(3840)} className={`px-2 py-0.5 rounded text-[10px] font-bold transition-all ${resolution === 3840 ? 'bg-gray-600 text-white' : 'text-gray-500 hover:text-gray-300'}`}>4K</button>
                                      </div>
                                      <span className="text-gray-600">|</span>
-                                     <FileImage size={14} />
+                                     {Icons.FileImage}
                                      <div className="flex bg-[#222] rounded p-0.5">
                                          <button className="px-2 py-0.5 rounded text-[10px] font-bold bg-gray-600 text-white cursor-default">JPG</button>
                                      </div>
                                 </div>
                                 <button onClick={renderAndDownload} disabled={isExporting} className="w-full lg:w-auto bg-white hover:bg-gray-200 text-black px-6 py-2.5 rounded-lg font-bold shadow-lg shadow-white/5 transition-all active:scale-95 flex items-center justify-center gap-2 min-w-[200px]">
-                                    {isExporting ? <><div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin"></div> 渲染中...</> : <><Download size={16} /> 下載成果</>}
+                                    {isExporting ? <><div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin"></div> 渲染中...</> : <>{Icons.Download} 下載成果</>}
                                 </button>
                             </div>
                         </div>
-                   </div>
+                    </div>
                 )}
               </main>
             </div>
@@ -631,4 +625,3 @@
     </script>
 </body>
 </html>
-
